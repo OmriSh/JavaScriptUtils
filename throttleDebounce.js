@@ -16,8 +16,15 @@ function throttleDebounce(options) {
     var maxDelayHandle = undefined,
         throttleHandle = undefined,
         shouldBounce = undefined,
+        throttleTime = undefined,
         cancelled = undefined,
         context = undefined;
+
+    function innerBounce(trigger){
+        shouldBounce = true;
+        context.trigger = trigger;
+        debounced();
+    }
 
     function reset(){
         //clear throttleHandle
@@ -31,6 +38,7 @@ function throttleDebounce(options) {
             maxDelayHandle = undefined;
         }
 
+        throttleTime = undefined;
         shouldBounce = false;
 
         var thisContext = {
@@ -38,8 +46,7 @@ function throttleDebounce(options) {
             arguments: undefined,
             bounce: function bounce(){
                 if(shouldBounce === false && context === thisContext && cancelled !== true){
-                    thisContext.trigger = 'control';
-                    shouldBounce = true;
+                    innerBounce('control');
                     return true;
                 }
             }
@@ -48,25 +55,48 @@ function throttleDebounce(options) {
     }
 
     function setMaxDelay(){
-        maxDelayHandle = setTimeoutFunc(()=>{
-            maxDelayHandle = undefined;
-            if(shouldBounce === false){
-                shouldBounce = true;
-                context.trigger = 'debounce';
-                debounced();
-            }
-        }, options.maxDelay);
+        maxDelayHandle = setTimeoutFunc(maxDelayTimeoutFunc, options.maxDelay);
     }
 
-    function setThrottleWait(){
-        throttleHandle = setTimeoutFunc(()=>{
-            throttleHandle = undefined;
-            if(shouldBounce === false){
-                shouldBounce = true;
-                context.trigger = 'throttle';
-                debounced();
+    function maxDelayTimeoutFunc(){
+        maxDelayHandle = undefined;
+        if(shouldBounce === false){
+            innerBounce('debounce');
+        }
+    }
+
+    function feedThrottle(selfCall, timeLeft){
+        if(selfCall === false){
+            var now = Date.now();
+            var passedTime = throttleTime ? (throttleTime - now) : 0;
+
+            if(passedTime === 0){
+                throttleTime = now + options.throttleWait;
+            } else if(passedTime > 0){
+                throttleTime += (options.throttleWait - passedTime); //overtime
+            } else {
+                //code execution took too long, we've missed our train!
+                innerBounce('throttle');
+                return;
             }
-        }, options.throttleWait);
+        }
+
+        if(throttleHandle === undefined){
+            var throttleWait = timeLeft || options.throttleWait;
+            throttleHandle = setTimeoutFunc(throttleWaitTimeoutFunc, throttleWait);
+        }
+    }
+
+    function throttleWaitTimeoutFunc(){
+        throttleHandle = undefined;
+        var timeLeft = throttleTime - Date.now();
+        if(shouldBounce === false){
+            if(timeLeft > 0){
+                feedThrottle(true, timeLeft);
+            } else {
+                innerBounce('throttle');
+            }
+        }
     }
 
     function debounced(){
@@ -83,8 +113,7 @@ function throttleDebounce(options) {
                 options.controlFunc.call(null, context);
             }
 
-            throttleHandle && clearTimeoutFunc(throttleHandle);
-            setThrottleWait();
+            feedThrottle(false);
 
             if(maxDelayHandle === undefined && options.maxDelay !== undefined){
                 setMaxDelay();
