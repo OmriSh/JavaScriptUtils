@@ -1,8 +1,8 @@
 /** Creates a function that throttle and debounce events.
  * Basically it allows you to limit throttling time. 
  * @param {Function} options.func The function to debounce & throttle.
- * @param {number} options.maxDelay max time since begining of events-chain, bounce at timeout.
- * @param {number} options.throttleWait time to wait for the next event (while in events-chain).
+ * @param {number} options.maxDelay max time since begining of event-chain, bounce at timeout.
+ * @param {number} options.throttleWait time to wait for the next event (while in event-chain).
  * @param {Function} options.controlFunc allows some control over the debounce mechanism, and option to aggregate events, should be lightweight!
  * @param {Function} options.setTimeout allows override the default 'setTimeout' function.
  * @param {Function} options.clearTimeout allows override the default 'clearTimeout' function.
@@ -13,21 +13,30 @@ function throttleDebounce(options) {
     var setTimeoutFunc = options.setTimeout || setTimeout,
         clearTimeoutFunc = options.clearTimeout || clearTimeout;
 
-    var maxDelayHandle = undefined,
-        throttleHandle = undefined,
-        shouldBounce = undefined,
-        throttleTime = undefined,
-        cancelled = undefined,
-        context = undefined,
-        bounce = undefined;
+    var maxDelayHandle = undefined, //timeout handle for debouncing
+        throttleHandle = undefined, //timeout handle for throttling
+        shouldBounce = false, //indicates if event chain should bounce now
+        throttleTime = undefined, //maxTime to wait to next event
+        cancelled = false, //global cancell flag
+        context = undefined, //will be passed to 'options.func' and 'options.controlFunc' as a single argument
+        gotAnyEvent = false, //indicates whether or not we have something to bounce
+        bounce = undefined; //bounce function only for this event-chain
 
-    function unsafeBounce(trigger){
-        shouldBounce = true;
-        context.trigger = trigger;
-        debounced();
+    function triggerBounce(trigger){
+        if(shouldBounce === false && cancelled === false){
+            shouldBounce = true;
+            context.trigger = trigger;
+            debounced();
+            return true;
+        }
     }
 
+    //new event-chain
     function reset(){
+        gotAnyEvent = false;
+        throttleTime = undefined;
+        shouldBounce = false;
+
         //clear throttleHandle
         if(throttleHandle !== undefined){
             clearTimeoutFunc(throttleHandle);
@@ -39,20 +48,19 @@ function throttleDebounce(options) {
             maxDelayHandle = undefined;
         }
 
-        throttleTime = undefined;
-        shouldBounce = false;
-
-        bounce = function(trigger){
-            if(context === thisContext && shouldBounce === false){
-                unsafeBounce(trigger);
-                return true;
-            }
-        };
-
         var thisContext = {
             callCount: 0,
             arguments: undefined,
-            bounce: ()=>bounce('control')
+            bounce: function(){
+                return bounce('control');
+            }
+        };
+
+        bounce = function contextBounce(trigger){
+            //prevent cross context calls
+            if(context === thisContext){
+                return triggerBounce(trigger);
+            }
         };
 
         context = thisContext;
@@ -67,26 +75,24 @@ function throttleDebounce(options) {
         bounce('debounce');
     }
 
-    function feedThrottle(selfCall, timeLeft){
-        if(selfCall === false){
-            var now = Date.now();
+    function feedThrottle(){
+        var now = Date.now();
+        if(throttleHandle === undefined){ //first event
+            throttleTime = now + options.throttleWait;
+            createThrottleTimeout();
+        } else {
             var passedTime = throttleTime ? (options.throttleWait-(throttleTime - now)) : 0;
-
-            if(passedTime === 0){
-                throttleTime = now + options.throttleWait;
-            } else if(passedTime > 0){
+            if(passedTime > 0){
                 throttleTime += passedTime; //overtime
             } else {
                 //code execution took too long, we've missed our train!
                 bounce('throttle');
-                return;
             }
         }
+    }
 
-        if(throttleHandle === undefined){
-            var throttleWait = timeLeft || options.throttleWait;
-            throttleHandle = setTimeoutFunc(feedThrottleTimeoutFunc, throttleWait);
-        }
+    function createThrottleTimeout(overrideTime){
+        throttleHandle = setTimeoutFunc(feedThrottleTimeoutFunc, overrideTime || options.throttleWait);
     }
 
     function feedThrottleTimeoutFunc(){
@@ -94,7 +100,7 @@ function throttleDebounce(options) {
         if(shouldBounce === false){
             var timeLeft = throttleTime - Date.now();
             if(timeLeft > 0){
-                feedThrottle(true, timeLeft);
+                createThrottleTimeout(timeLeft);
             } else {
                 bounce('throttle');
             }
@@ -102,28 +108,22 @@ function throttleDebounce(options) {
     }
 
     function debounced(){
-        if(cancelled === true){
-            return;
-        }
-
-        if(shouldBounce === false){
-            context.callCount++;
-            context.arguments = arguments;
-
+        if(shouldBounce === false){ //do not bounce yet
             if(options.controlFunc !== undefined){
                 //call user callback (can aggregate events and bounce)
                 options.controlFunc.call(null, context);
             }
 
-            feedThrottle(false);
+            feedThrottle();
 
             if(maxDelayHandle === undefined && options.maxDelay !== undefined){
                 setMaxDelay();
             }
-        }
-
-        if(shouldBounce === true){
-            context.arguments = Array.prototype.slice.call(context.arguments);
+        } else if(shouldBounce === true){ //bounce!
+            //keep closure clean, don't want to leak out internal stuff
+            if(context.arguments){
+                context.arguments = Array.prototype.slice.call(context.arguments);
+            }
             delete context.bounce;
 
             //actual bounce
@@ -132,23 +132,39 @@ function throttleDebounce(options) {
         }
     }
 
-    debounced.cancel = ()=>{
-        if(cancelled !== true){
+    //this function get called from the 'event-listener'
+    function listener(){
+        if(cancelled === false){
+            gotAnyEvent = true;
+            context.callCount++;
+            context.arguments = arguments;
+            debounced();
+        }
+    }
+
+    listener.cancel = ()=>{
+        if(cancelled === false){
             cancelled = true;
             reset();
             return true;           
         }
     };
 
-    debounced.resume = ()=>{
+    listener.resume = ()=>{
         if(cancelled === true){
             cancelled = false;
             return true;
         }
     };
 
+    listener.bounce = function globalBounce(force){
+        if(force === true || gotAnyEvent === true){
+            return triggerBounce('global'); //cancelled flag is checked within function
+        }
+    };
+
     reset();
-    return debounced;
+    return listener;
 }
 
 //expose as a node module
