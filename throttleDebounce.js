@@ -150,3 +150,8 @@ function throttleDebounce(options) {
     reset();
     return debounced;
 }
+
+//expose as a node module
+if(typeof module !== 'undefined'){
+    module.exports = throttleDebounce;
+}
