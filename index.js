@@ -86,7 +86,7 @@ function throttleDebounce(options) {
     }
 
     function feedThrottle(){
-        var now = Date.now();
+        var now = (new Date()).getTime();
         if(throttleHandle === undefined){ //first event
             throttleTime = now + options.throttleWait;
             createThrottleTimeout();
@@ -102,12 +102,16 @@ function throttleDebounce(options) {
     }
 
     function createThrottleTimeout(overrideTime){
+        if(overrideTime !== undefined){
+            overrideTime = Math.min(options.throttleWait, overrideTime);
+        }
+
         throttleHandle = setTimeoutFunc(feedThrottleTimeoutFunc, overrideTime || options.throttleWait);
     }
 
     function feedThrottleTimeoutFunc(){
         throttleHandle = undefined;
-        var timeLeft = throttleTime - Date.now();
+        var timeLeft = throttleTime - (new Date()).getTime();
         if(timeLeft > 0){
             createThrottleTimeout(timeLeft);
         } else {
