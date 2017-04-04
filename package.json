@@ -1,5 +1,5 @@
 {
-  "name": "throttle-debounce",
+  "name": "throttled-debounce",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/OmriSh/throttle-debounce"
+    "url": "git://github.com/OmriSh/throttled-debounce"
   },
   "author": "OmriSh",
   "license": "ISC"

@@ -9,7 +9,7 @@
  * @returns {Function} Returns the new debounced function.
  */
 
-function throttleDebounce(options) {
+function throttledDebounce(options) {
     var setTimeoutFunc = options.setTimeout || setTimeout,
         clearTimeoutFunc = options.clearTimeout || clearTimeout;
 
@@ -166,5 +166,5 @@ function throttleDebounce(options) {
 
 //expose as a node module
 if(typeof module !== 'undefined'){
-    module.exports = throttleDebounce;
+    module.exports = throttledDebounce;
 }

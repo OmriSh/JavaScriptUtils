@@ -19,7 +19,7 @@ var func = (options) => {
     console.log(options);
 };
 
-window.onscroll = throttleDebounce({func: func, controlFunc: controlFunc, maxDelay: 3000, throttleWait: 500});
+window.onscroll = throttledDebounce({func: func, controlFunc: controlFunc, maxDelay: 3000, throttleWait: 500});
 ```
 
 ```JavaScript
