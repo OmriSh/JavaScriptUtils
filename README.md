@@ -1,4 +1,4 @@
-# throttle-debounce
+# throttled-debounce
 
 ```JavaScript
 var controlFunc = (options) => {
