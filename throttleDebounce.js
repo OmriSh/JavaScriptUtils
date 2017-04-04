@@ -18,9 +18,10 @@ function throttleDebounce(options) {
         shouldBounce = undefined,
         throttleTime = undefined,
         cancelled = undefined,
-        context = undefined;
+        context = undefined,
+        bounce = undefined;
 
-    function innerBounce(trigger){
+    function unsafeBounce(trigger){
         shouldBounce = true;
         context.trigger = trigger;
         debounced();
@@ -41,16 +42,19 @@ function throttleDebounce(options) {
         throttleTime = undefined;
         shouldBounce = false;
 
+        bounce = function(trigger){
+            if(context === thisContext && shouldBounce === false){
+                unsafeBounce(trigger);
+                return true;
+            }
+        };
+
         var thisContext = {
             callCount: 0,
             arguments: undefined,
-            bounce: function bounce(){
-                if(shouldBounce === false && context === thisContext && cancelled !== true){
-                    innerBounce('control');
-                    return true;
-                }
-            }
+            bounce: ()=>bounce('control')
         };
+
         context = thisContext;
     }
 
@@ -60,9 +64,7 @@ function throttleDebounce(options) {
 
     function maxDelayTimeoutFunc(){
         maxDelayHandle = undefined;
-        if(shouldBounce === false){
-            innerBounce('debounce');
-        }
+        bounce('debounce');
     }
 
     function feedThrottle(selfCall, timeLeft){
@@ -76,25 +78,25 @@ function throttleDebounce(options) {
                 throttleTime += (options.throttleWait - passedTime); //overtime
             } else {
                 //code execution took too long, we've missed our train!
-                innerBounce('throttle');
+                bounce('throttle');
                 return;
             }
         }
 
         if(throttleHandle === undefined){
             var throttleWait = timeLeft || options.throttleWait;
-            throttleHandle = setTimeoutFunc(throttleWaitTimeoutFunc, throttleWait);
+            throttleHandle = setTimeoutFunc(feedThrottleTimeoutFunc, throttleWait);
         }
     }
 
-    function throttleWaitTimeoutFunc(){
+    function feedThrottleTimeoutFunc(){
         throttleHandle = undefined;
-        var timeLeft = throttleTime - Date.now();
         if(shouldBounce === false){
+            var timeLeft = throttleTime - Date.now();
             if(timeLeft > 0){
                 feedThrottle(true, timeLeft);
             } else {
-                innerBounce('throttle');
+                bounce('throttle');
             }
         }
     }
