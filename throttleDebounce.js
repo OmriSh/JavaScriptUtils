@@ -70,12 +70,12 @@ function throttleDebounce(options) {
     function feedThrottle(selfCall, timeLeft){
         if(selfCall === false){
             var now = Date.now();
-            var passedTime = throttleTime ? (throttleTime - now) : 0;
+            var passedTime = throttleTime ? (options.throttleWait-(throttleTime - now)) : 0;
 
             if(passedTime === 0){
                 throttleTime = now + options.throttleWait;
             } else if(passedTime > 0){
-                throttleTime += (options.throttleWait - passedTime); //overtime
+                throttleTime += passedTime; //overtime
             } else {
                 //code execution took too long, we've missed our train!
                 bounce('throttle');
