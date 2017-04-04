@@ -15,7 +15,7 @@ function throttleDebounce(options) {
 
     var maxDelayHandle = undefined, //timeout handle for debouncing
         throttleHandle = undefined, //timeout handle for throttling
-        shouldBounce = false, //indicates if event chain should bounce now
+        didBounce = false, //indicates if event chain just bounced
         throttleTime = undefined, //maxTime to wait to next event
         cancelled = false, //global cancell flag
         context = undefined, //will be passed to 'options.func' and 'options.controlFunc' as a single argument
@@ -23,10 +23,20 @@ function throttleDebounce(options) {
         bounce = undefined; //bounce function only for this event-chain
 
     function triggerBounce(trigger){
-        if(shouldBounce === false && cancelled === false){
-            shouldBounce = true;
+        if(didBounce === false && cancelled === false){
+            didBounce = true;
             context.trigger = trigger;
-            debounced();
+
+            //keep closure clean, don't want to leak out internal stuff
+            if(context.arguments){
+                context.arguments = Array.prototype.slice.call(context.arguments);
+            }
+            delete context.bounce;
+
+            //actual bounce
+            options.func.call(null, context);
+            reset();
+
             return true;
         }
     }
@@ -35,7 +45,7 @@ function throttleDebounce(options) {
     function reset(){
         gotAnyEvent = false;
         throttleTime = undefined;
-        shouldBounce = false;
+        didBounce = false;
 
         //clear throttleHandle
         if(throttleHandle !== undefined){
@@ -97,18 +107,21 @@ function throttleDebounce(options) {
 
     function feedThrottleTimeoutFunc(){
         throttleHandle = undefined;
-        if(shouldBounce === false){
-            var timeLeft = throttleTime - Date.now();
-            if(timeLeft > 0){
-                createThrottleTimeout(timeLeft);
-            } else {
-                bounce('throttle');
-            }
+        var timeLeft = throttleTime - Date.now();
+        if(timeLeft > 0){
+            createThrottleTimeout(timeLeft);
+        } else {
+            bounce('throttle');
         }
     }
 
-    function debounced(){
-        if(shouldBounce === false){ //do not bounce yet
+    //this function get called from the 'event-listener'
+    function listener(){
+        if(cancelled === false){
+            gotAnyEvent = true;
+            context.callCount++;
+            context.arguments = arguments;
+
             if(options.controlFunc !== undefined){
                 //call user callback (can aggregate events and bounce)
                 options.controlFunc.call(null, context);
@@ -119,30 +132,10 @@ function throttleDebounce(options) {
             if(maxDelayHandle === undefined && options.maxDelay !== undefined){
                 setMaxDelay();
             }
-        } else if(shouldBounce === true){ //bounce!
-            //keep closure clean, don't want to leak out internal stuff
-            if(context.arguments){
-                context.arguments = Array.prototype.slice.call(context.arguments);
-            }
-            delete context.bounce;
-
-            //actual bounce
-            options.func.call(null, context);
-            reset();
         }
     }
 
-    //this function get called from the 'event-listener'
-    function listener(){
-        if(cancelled === false){
-            gotAnyEvent = true;
-            context.callCount++;
-            context.arguments = arguments;
-            debounced();
-        }
-    }
-
-    listener.cancel = ()=>{
+    listener.cancel = function cancel(){
         if(cancelled === false){
             cancelled = true;
             reset();
@@ -150,7 +143,7 @@ function throttleDebounce(options) {
         }
     };
 
-    listener.resume = ()=>{
+    listener.resume = function resume(){
         if(cancelled === true){
             cancelled = false;
             return true;
