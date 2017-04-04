@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/OmriSh/JavaScriptUtils"
+    "url": "git://github.com/OmriSh/throttle-debounce"
   },
   "author": "OmriSh",
   "license": "ISC"
