@@ -14,12 +14,12 @@ var controlFunc = (options) => {
     }
 };
 
-var func = (options) => {
+var callback = (options) => {
 	options.timing = Date.now() - options.timing;
     console.log(options);
 };
 
-window.onscroll = throttledDebounce({func: func, controlFunc: controlFunc, maxDelay: 3000, throttleWait: 500});
+window.onscroll = throttledDebounce({callback: callback, controlFunc: controlFunc, maxDelay: 3000, throttleWait: 500});
 ```
 
 ```JavaScript

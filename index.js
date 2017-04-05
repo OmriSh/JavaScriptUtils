@@ -1,6 +1,6 @@
 /** Creates a function that throttle and debounce events.
  * Basically it allows you to limit throttling time. 
- * @param {Function} options.func The function to debounce & throttle.
+ * @param {Function} options.callback The function to call after debounce & throttle.
  * @param {number} options.maxDelay max time since begining of event-chain, bounce at timeout.
  * @param {number} options.throttleWait time to wait for the next event (while in event-chain).
  * @param {Function} options.controlFunc allows some control over the debounce mechanism, and option to aggregate events, should be lightweight!
@@ -34,7 +34,7 @@ function throttledDebounce(options) {
             delete context.bounce;
 
             //actual bounce
-            options.func.call(null, context);
+            options.callback.call(null, context);
             reset();
 
             return true;
