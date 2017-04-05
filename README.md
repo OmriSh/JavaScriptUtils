@@ -19,7 +19,7 @@ var controlFunc = (context) => {
 };
 
 var callback = (context) => {
-	context.timing = Date.now() - context.timing;
+    context.timing = Date.now() - context.timing;
     console.log(context);
 };
 
