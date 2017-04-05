@@ -9,7 +9,7 @@ var controlFunc = (options) => {
     } else {
         //change of element
         if(options.element !== event.target){
-            options.bounce();
+            options.split();
         }
     }
 };
@@ -18,15 +18,15 @@ var callback = (options) => {
 	options.timing = Date.now() - options.timing;
     console.log(options);
 };
-
-window.onscroll = throttledDebounce({callback: callback, controlFunc: controlFunc, maxDelay: 3000, throttleWait: 500});
+window.scroll_handler = throttledDebounce({callback: callback, controlFunc: controlFunc, maxDelay: 3000, throttleWait: 500});
+document.addEventListener('scroll', window.scroll_handler, true);
 ```
 
 ```JavaScript
-window.onscroll.cancel();
-window.onscroll.resume();
+window.scroll_handler.cancel();
+window.scroll_handler.resume();
 ```
 
 ```JavaScript
-window.onscroll.bounce();
+window.scroll_handler.bounce();
 ```

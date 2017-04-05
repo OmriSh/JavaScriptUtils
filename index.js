@@ -20,7 +20,9 @@ function throttledDebounce(options) {
         cancelled = false, //global cancell flag
         context = undefined, //will be passed to 'options.func' and 'options.controlFunc' as a single argument
         gotAnyEvent = false, //indicates whether or not we have something to bounce
-        bounce = undefined; //bounce function only for this event-chain
+        bounce = undefined, //bounce function only for this event-chain
+        splitEventChain = false,
+        includeLastEventOnSplitting = false;
 
     function triggerBounce(trigger){
         if(didBounce === false && cancelled === false){
@@ -31,7 +33,7 @@ function throttledDebounce(options) {
             if(context.arguments){
                 context.arguments = Array.prototype.slice.call(context.arguments);
             }
-            delete context.bounce;
+            delete context.split;
 
             //actual bounce
             options.callback.call(null, context);
@@ -61,8 +63,16 @@ function throttledDebounce(options) {
         var thisContext = {
             callCount: 0,
             arguments: undefined,
-            bounce: function(){
-                return bounce('control');
+            split: function(includeCurrent){
+                //prevent cross context calls
+                if(context === thisContext && splitEventChain === false){
+                    splitEventChain = true;
+
+                    if(includeCurrent === true){
+                        includeLastEventOnSplitting = true;
+                    }
+                    return true;
+                }
             }
         };
 
@@ -124,11 +134,27 @@ function throttledDebounce(options) {
         if(cancelled === false){
             gotAnyEvent = true;
             context.callCount++;
+            var previousArguments = context.arguments;
             context.arguments = arguments;
 
             if(options.controlFunc !== undefined){
-                //call user callback (can aggregate events and bounce)
+                var previousSplitEventChain = splitEventChain;
+                splitEventChain = false;
+                includeLastEventOnSplitting = false;
+                //call user callback (can aggregate events and split event-chain)
                 options.controlFunc.call(null, context);
+                //handle call to 'split' function
+                if(splitEventChain === true && previousSplitEventChain === false){ //splitEventChain could be set by the controlFunc
+                    if(includeLastEventOnSplitting === false){
+                        context.arguments = previousArguments; //fetch previous arguments, before the split
+                        context.callCount--;
+                    }
+                    bounce('control'); //performs a full reset, notice: splitEventChain in not effected
+                    if(includeLastEventOnSplitting === false){
+                        listener.apply(null, arguments); //inject call, create new event-chain
+                    }
+                    return; //if splitting, exit function
+                }
             }
 
             feedThrottle();
