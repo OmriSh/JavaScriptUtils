@@ -5,22 +5,22 @@ It allows to use a throttling & debouncing mechanism combined.
 
 ### Usage
 ```JavaScript
-var controlFunc = (options) => {
-    var event = options.arguments[0];
-    if(options.callCount === 1){
-        options.timing = Date.now();
-        options.element = event.target;
+var controlFunc = (context) => {
+    var event = context.arguments[0];
+    if(context.callCount === 1){
+        context.timing = Date.now();
+        context.element = event.target;
     } else {
         //change of element
-        if(options.element !== event.target){
-            options.split(); //force bounce
+        if(context.element !== event.target){
+            context.split(); //force bounce
         }
     }
 };
 
-var callback = (options) => {
-	options.timing = Date.now() - options.timing;
-    console.log(options);
+var callback = (context) => {
+	context.timing = Date.now() - context.timing;
+    console.log(context);
 };
 
 var options = {
