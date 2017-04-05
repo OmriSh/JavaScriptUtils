@@ -8,12 +8,12 @@ It allows to use a throttling & debouncing mechanism combined.
 var controlFunc = (options) => {
     var event = options.arguments[0];
     if(options.callCount === 1){
-		options.timing = Date.now();
+        options.timing = Date.now();
         options.element = event.target;
     } else {
         //change of element
         if(options.element !== event.target){
-            options.split();
+            options.split(); //force bounce
         }
     }
 };
@@ -23,15 +23,18 @@ var callback = (options) => {
     console.log(options);
 };
 
-window.scroll_handler = throttledDebounce({callback: callback, controlFunc: controlFunc, maxDelay: 3000, throttleWait: 500});
+var options = {
+    callback: callback,
+    controlFunc: controlFunc,
+    maxDelay: 3000,
+    throttleWait: 500
+};
+
+window.scroll_handler = throttledDebounce(options);
 document.addEventListener('scroll', window.scroll_handler, true);
-```
 
-```JavaScript
-window.scroll_handler.cancel();
-window.scroll_handler.resume();
-```
+window.scroll_handler.cancel(); //stop fire events
+window.scroll_handler.resume(); //resume
 
-```JavaScript
-window.scroll_handler.bounce();
+window.scroll_handler.bounce(); //force bounce
 ```
